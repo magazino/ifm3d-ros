@@ -542,7 +542,7 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
 
     if (this->rgb_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::JPEG_IMAGE))
     {
-      this->rgb_image_pub_.publish(ifm3d_to_ros_compressed_image(rgb_img, optical_head, "jpeg", getName()));
+      this->rgb_image_pub_.publish(ifm3d_to_ros_compressed_image(rgb_img, head, "jpeg", getName()));
       NODELET_DEBUG_STREAM("after publishing rgb image");
     }
 }
@@ -606,25 +606,25 @@ void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
 
     if (this->amplitude_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::NORM_AMPLITUDE_IMAGE))
     {
-      this->amplitude_pub_.publish(ifm3d_to_ros_image(amplitude_img, optical_head, getName()));
+      this->amplitude_pub_.publish(ifm3d_to_ros_image(amplitude_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing norm amplitude image");
     }
 
     if (this->confidence_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::CONFIDENCE_IMAGE))
     {
-      this->conf_pub_.publish(ifm3d_to_ros_image(confidence_img, optical_head, getName()));
+      this->conf_pub_.publish(ifm3d_to_ros_image(confidence_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing confidence image");
     }
 
     if (this->radial_distance_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::RADIAL_DISTANCE_IMAGE))
     {
-      this->distance_pub_.publish(ifm3d_to_ros_image(distance_img, optical_head, getName()));
+      this->distance_pub_.publish(ifm3d_to_ros_image(distance_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing distance image");
     }
 
     if (this->radial_distance_noise_stream_ && frame->HasBuffer(ifm3d::buffer_id::RADIAL_DISTANCE_NOISE))
     {
-      this->distance_noise_pub_.publish(ifm3d_to_ros_image(distance_noise_img, optical_head, getName()));
+      this->distance_noise_pub_.publish(ifm3d_to_ros_image(distance_noise_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing distance noise image");
     }
 
@@ -642,7 +642,7 @@ void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
     {
       NODELET_DEBUG_STREAM("start publishing extrinsics");
       ifm3d_ros_msgs::Extrinsics extrinsics_msg;
-      extrinsics_msg.header = optical_head;
+      extrinsics_msg.header = head;
       try
       {
         ifm3d::Buffer_<float> ext = extrinsics;

@@ -141,7 +141,6 @@ private:
   //
   // Message header used for publishing
   //
-  std_msgs::Header optical_head;
   std_msgs::Header head;
 
 
