@@ -86,6 +86,7 @@ void ifm3d_ros::CameraNodelet::onInit()
   bool extrinsic_image_stream;
   bool intrinsic_image_stream;
   bool rgb_image_stream;
+  bool rgb_info_stream;
 
   if ((nn.size() > 0) && (nn.at(0) == '/'))
   {
@@ -119,6 +120,7 @@ void ifm3d_ros::CameraNodelet::onInit()
   this->np_.param("extrinsic_image_stream", extrinsic_image_stream, true);
   this->np_.param("intrinsic_image_stream", intrinsic_image_stream, true);
   this->np_.param("rgb_image_stream", rgb_image_stream, true);
+  this->np_.param("rgb_info_stream", rgb_info_stream, true);
 
   // default schema masks
   std::list<ifm3d::buffer_id> buffer_list;
@@ -145,6 +147,7 @@ void ifm3d_ros::CameraNodelet::onInit()
   this->radial_distance_noise_stream_ = static_cast<bool>(radial_distance_noise_stream);
   this->amplitude_image_stream_ = static_cast<bool>(amplitude_image_stream);
   this->rgb_image_stream_ = static_cast<bool>(rgb_image_stream);
+  this->rgb_info_stream_ = static_cast<bool>(rgb_info_stream);
   this->extrinsic_image_stream_ = static_cast<bool>(extrinsic_image_stream);
   this->intrinsic_image_stream_ = static_cast<bool>(intrinsic_image_stream);
 
@@ -215,10 +218,18 @@ void ifm3d_ros::CameraNodelet::onInit()
     NODELET_DEBUG_STREAM("Extrinsics parameter publisher active");
   }
 
-  // if (this->intrinsic_image_stream)
-  // {
-  //   this->intrinsics_pub_ = this->np_.advertise<ifm3d_ros_msgs::Intrinsics>("intrinsics", 1);
-  // }
+  if (this->intrinsic_image_stream_)
+  {
+    this->intrinsics_pub_ = this->np_.advertise<ifm3d_ros_msgs::Intrinsics>("intrinsics", 1);
+    NODELET_DEBUG_STREAM("Intrinsics parameter publisher active");
+  }
+
+  if (strcmp(this->imager_type_.c_str(), "2D") == 0 && this->rgb_info_stream_)
+  {
+    this->rgb_info_pub_ = this->np_.advertise<ifm3d_ros_msgs::RGBInfo>("rgb_info", 1);
+    NODELET_DEBUG_STREAM("RGB info publisher active");
+  }
+
   NODELET_DEBUG_STREAM("after advertising the publishers");
 
 
@@ -545,6 +556,27 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
       this->rgb_image_pub_.publish(ifm3d_to_ros_compressed_image(rgb_img, head, "jpeg", getName()));
       NODELET_DEBUG_STREAM("after publishing rgb image");
     }
+
+    if (frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB);
+      this->extrinsics_pub_.publish(ifm3d_to_extrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing rgb extrinsics");
+    }
+
+    if (frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
+      this->intrinsics_pub_.publish(ifm3d_to_intrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing rgb intrinsics");
+    }
+
+    if (frame->HasBuffer(ifm3d::buffer_id::RGB_INFO))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::RGB_INFO);
+      this->rgb_info_pub_.publish(ifm3d_to_rgb_info(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing rgb info");
+    }
 }
 
 void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
@@ -658,6 +690,20 @@ void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
         NODELET_WARN("out-of-range error fetching extrinsics");
       }
       this->extrinsics_pub_.publish(extrinsics_msg);
+    }
+
+    if (frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB);
+      this->extrinsics_pub_.publish(ifm3d_to_extrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing depth extrinsics");
+    }
+
+    if (frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
+      this->intrinsics_pub_.publish(ifm3d_to_intrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing depth intrinsics");
     }
 }
 
