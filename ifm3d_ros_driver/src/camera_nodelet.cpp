@@ -557,21 +557,21 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
       NODELET_DEBUG_STREAM("after publishing rgb image");
     }
 
-    if (frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
+    if (this->extrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
     {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB);
       this->extrinsics_pub_.publish(ifm3d_to_extrinsics(buffer, head, getName()));
       NODELET_DEBUG_STREAM("after publishing rgb extrinsics");
     }
 
-    if (frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
+    if (this->intrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
     {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
       this->intrinsics_pub_.publish(ifm3d_to_intrinsics(buffer, head, getName()));
       NODELET_DEBUG_STREAM("after publishing rgb intrinsics");
     }
 
-    if (frame->HasBuffer(ifm3d::buffer_id::RGB_INFO))
+    if (this->rgb_info_stream_ && frame->HasBuffer(ifm3d::buffer_id::RGB_INFO))
     {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::RGB_INFO);
       this->rgb_info_pub_.publish(ifm3d_to_rgb_info(buffer, head, getName()));
@@ -672,34 +672,12 @@ void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
     //
     if (this->extrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
     {
-      NODELET_DEBUG_STREAM("start publishing extrinsics");
-      ifm3d_ros_msgs::Extrinsics extrinsics_msg;
-      extrinsics_msg.header = head;
-      try
-      {
-        ifm3d::Buffer_<float> ext = extrinsics;
-        extrinsics_msg.tx = ext.at(0);
-        extrinsics_msg.ty = ext.at(1);
-        extrinsics_msg.tz = ext.at(2);
-        extrinsics_msg.rot_x = ext.at(3);
-        extrinsics_msg.rot_y = ext.at(4);
-        extrinsics_msg.rot_z = ext.at(5);
-      }
-      catch (const std::out_of_range& ex)
-      {
-        NODELET_WARN("out-of-range error fetching extrinsics");
-      }
-      this->extrinsics_pub_.publish(extrinsics_msg);
-    }
-
-    if (frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
-    {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB);
       this->extrinsics_pub_.publish(ifm3d_to_extrinsics(buffer, head, getName()));
       NODELET_DEBUG_STREAM("after publishing depth extrinsics");
     }
 
-    if (frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
+    if (this->intrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
     {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
       this->intrinsics_pub_.publish(ifm3d_to_intrinsics(buffer, head, getName()));
