@@ -75,6 +75,12 @@ install(FILES nodelets.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
   )
 
+catkin_install_python(PROGRAMS
+  scripts/example_registration_2d_3d.py
+  DESTINATION
+  ${CATKIN_PACKAGE_BIN_DESTINATION}
+  )
+
 ######################
 ## Node-level tests ##
 ######################
