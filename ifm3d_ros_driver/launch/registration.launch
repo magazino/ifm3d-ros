@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="nodelet"
+        type="nodelet"
+        name="reg_standalone_nodelet"
+        args="manager"
+        output="screen"/>
+  <node pkg="nodelet"
+        type="nodelet"
+        name="registration"
+        args="load ifm3d_ros/registration_nodelet reg_standalone_nodelet"
+        output="screen"
+        respawn="true"/>
+</launch>
