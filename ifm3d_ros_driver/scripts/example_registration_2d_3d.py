@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import tf2_ros
 import numpy as np
+import ros_numpy
 import rospy
 from cv_bridge import CvBridge
 from ifm3d_ros_msgs.msg import Intrinsics, RGBInfo
@@ -221,26 +222,40 @@ def rectify(invIntrinsic, modelID, image):
 
 
 class Registration2D3D:
-    def __init__(self, depth_prefix, rgb_prefix):
+    def __init__(self, depth_prefix, rgb_prefix, use_cloud=True):
+        self.use_cloud = use_cloud
+        self.point_cloud = None
+        self.depth_img = None
+        self.rgb_img = None
+        self.depth_info = None
+        self.rgb_info = None
         self.cv_bridge = CvBridge()
         self.tf2_buffer = tf2_ros.Buffer()
         self.tf2_listener = tf2_ros.TransformListener(self.tf2_buffer)
-        self.depth_img_sub = rospy.Subscriber(
-            depth_prefix + "/distance",
-            Image,
-            self.depth_image_cb,
-            queue_size=1,
-        )
+        if use_cloud:
+            self.cloud_sub = rospy.Subscriber(
+                depth_prefix + "/cloud",
+                PointCloud2,
+                self.cloud_cb,
+                queue_size=1,
+            )
+        else:
+            self.depth_img_sub = rospy.Subscriber(
+                depth_prefix + "/distance",
+                Image,
+                self.depth_image_cb,
+                queue_size=1,
+            )
+            self.depth_info_sub = rospy.Subscriber(
+                depth_prefix + "/intrinsics",
+                Intrinsics,
+                self.depth_info_cb,
+                queue_size=1,
+            )
         self.rgb_img_sub = rospy.Subscriber(
             rgb_prefix + "/rgb_image/compressed",
             CompressedImage,
             self.rgb_image_cb,
-            queue_size=1,
-        )
-        self.depth_info_sub = rospy.Subscriber(
-            depth_prefix + "/intrinsics",
-            Intrinsics,
-            self.depth_info_cb,
             queue_size=1,
         )
         self.rgb_info_sub = rospy.Subscriber(
@@ -252,16 +267,19 @@ class Registration2D3D:
         self.colored_pcl_pub = rospy.Publisher(
             depth_prefix + "/colored_cloud", PointCloud2, queue_size=1
         )
-        self.depth_img = None
-        self.rgb_img = None
-        self.depth_info = None
-        self.rgb_info = None
 
-    def depth_image_cb(self, msg):
+    def cloud_cb(self, msg):
         if rospy.get_time() - msg.header.stamp.to_sec() > 0.1:
             return
-        self.depth_img = msg
-        self.pub_colored_pc()
+        point_cloud = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(msg).T
+        self.pub_colored_pc(point_cloud, msg.header, msg.height, msg.width)
+
+    def depth_image_cb(self, msg):
+        if rospy.get_time() - msg.header.stamp.to_sec() > 0.1 or \
+                self.depth_info is None:
+            return
+        point_cloud = self.depth_to_point_cloud(msg, self.depth_info)
+        self.pub_colored_pc(point_cloud, msg.header, msg.height, msg.width)
 
     def rgb_image_cb(self, msg):
         if rospy.get_time() - msg.header.stamp.to_sec() > 0.05:
@@ -274,43 +292,10 @@ class Registration2D3D:
     def rgb_info_cb(self, msg):
         self.rgb_info = msg
 
-    def pub_colored_pc(self):
-        if self.rgb_img is None or self.depth_img is None or \
-                self.rgb_info is None or self.depth_info is None:
-            return
-
-        jpg = self.cv_bridge.compressed_imgmsg_to_cv2(self.rgb_img, 'rgb8')
-        dis = self.cv_bridge.imgmsg_to_cv2(self.depth_img, self.depth_img.encoding)
-
-        modelID2D = self.rgb_info.intrinsics.model_id
-        invIntrinsic2D = self.rgb_info.inverse_intrinsics.model_parameters
-
-        modelID3D = self.depth_info.model_id
-        intrinsics3D = self.depth_info.model_parameters
-
-        try:
-            depth_tf = self.tf2_buffer.lookup_transform(
-                "odom",
-                self.depth_img.header.frame_id,
-                rospy.Time.now(),
-                rospy.Duration(0.5)
-            )
-            # TODO: check if same transform
-            rgb_tf = self.tf2_buffer.lookup_transform(
-                "odom",
-                self.depth_img.header.frame_id,
-                rospy.Time.now(),
-                rospy.Duration(0.5)
-            )
-        except (tf2_ros.TimeoutException,
-                tf2_ros.TransformException,
-                tf2_ros.ExtrapolationException):
-            rospy.logwarn_throttle(1, "Receiving no transforms")
-            return
-
-        depth_tf = Transformation.create(depth_tf).to_matrix()
-        rgb_tf_inv = Transformation.create(rgb_tf).inverse().to_matrix()
-
+    def depth_to_point_cloud(self, depth_img, depth_info):
+        dis = self.cv_bridge.imgmsg_to_cv2(depth_img, depth_img.encoding)
+        modelID3D = depth_info.model_id
+        intrinsics3D = depth_info.model_parameters
         # Following snippet is obtained from official documentation for o3r.
         #
         # Link for code:
@@ -320,27 +305,56 @@ class Registration2D3D:
         # of depth camera
         ux, uy, uz = intrinsic_projection(
             modelID3D, intrinsics3D, *dis.shape[::-1])
-
         # multiply unit vectors by depth of corresponding pixel
         x = (ux * dis).flatten()
         y = (uy * dis).flatten()
         z = (uz * dis).flatten()
         valid = dis.flatten() > 0.05
-
         for i, pt_valid in enumerate(valid):
             if not pt_valid:
                 x[i] = y[i] = z[i] = 0.0
-
         # Restructure point cloud as sequence of points
-        pcd_o3 = np.stack((x, y, z), axis=0)
+        point_cloud = np.stack((x, y, z), axis=0)
+        return point_cloud
+
+    def pub_colored_pc(self, point_cloud, header, height, width):
+        if self.rgb_img is None or self.rgb_info is None:
+            return
+
+        jpg = self.cv_bridge.compressed_imgmsg_to_cv2(self.rgb_img, 'rgb8')
+        modelID2D = self.rgb_info.intrinsics.model_id
+        invIntrinsic2D = self.rgb_info.inverse_intrinsics.model_parameters
+
+        # try:
+        depth_tf = self.tf2_buffer.lookup_transform(
+            "base_link",
+            header.frame_id,
+            rospy.Time.now(),
+            rospy.Duration(0.5)
+        )
+        # TODO: check if same transform
+        rgb_tf = self.tf2_buffer.lookup_transform(
+            "base_link",
+            self.rgb_img.header.frame_id,
+            rospy.Time.now(),
+            rospy.Duration(0.5)
+        )
+        # except (tf2_ros.TimeoutException,
+        #         tf2_ros.TransformException,
+        #         tf2_ros.ExtrapolationException):
+        #     rospy.logwarn_throttle(1, "Receiving no transforms")
+        #     return
+
+        depth_tf = Transformation.create(depth_tf).to_matrix()
+        rgb_tf_inv = Transformation.create(rgb_tf).inverse().to_matrix()
 
         # Transform from optical coordinate system
         # to user coordinate system
-        self.points = pcd_o3.T @ depth_tf[:3, :3].T + depth_tf[:3, 3].T
+        points = point_cloud.T @ depth_tf[:3, :3].T + depth_tf[:3, 3].T
 
         # convert to points in optics space
         # reverse internal Transform Rotation
-        pcd_o2 = self.points @ rgb_tf_inv[:3, :3].T + rgb_tf_inv[:3, 3].T
+        pcd_o2 = points @ rgb_tf_inv[:3, :3].T + rgb_tf_inv[:3, 3].T
 
         # Calculate 2D pixel coordinates for each 3D pixel
         pixels = np.round(
@@ -363,7 +377,7 @@ class Registration2D3D:
                 self.colors[i, 1] = jpg.data[idxX, idxY, 1]
                 self.colors[i, 2] = jpg.data[idxX, idxY, 2]
 
-        stacked_points = np.column_stack((pcd_o3.T, self.colors / 255))
+        stacked_points = np.column_stack((point_cloud.T, self.colors / 255))
 
         cloud_type = 'xyzrgb'
         ros_dtype = PointField.FLOAT32
@@ -377,17 +391,15 @@ class Registration2D3D:
             for i, n in enumerate(cloud_type)]
 
         colored_pcl = PointCloud2()
-        colored_pcl.header.frame_id = self.depth_img.header.frame_id
+        colored_pcl.header.frame_id = header.frame_id
         colored_pcl.header.stamp = rospy.Time.now()
-        colored_pcl.height = self.depth_img.height
-        colored_pcl.width = self.depth_img.width
+        colored_pcl.height = height
+        colored_pcl.width = width
         colored_pcl.is_bigendian = False
         colored_pcl.is_dense = True
         colored_pcl.fields = fields
         colored_pcl.point_step = (len(cloud_type) * itemsize)
-        colored_pcl.row_step = (len(cloud_type) * itemsize
-                                * self.depth_img.height
-                                * self.depth_img.width)
+        colored_pcl.row_step = (len(cloud_type) * itemsize * height * width)
         colored_pcl.data = data
         self.colored_pcl_pub.publish(colored_pcl)
 
