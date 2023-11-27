@@ -3,6 +3,7 @@
   <!-- Command-line arguments -->
   <arg name="namespace" default="ifm3d_ros_driver" doc="Desired namespace for the camera nodelet" />
   <arg name="nodelet_name" default="camera"/>
+  <arg name="nodelet_manager" default="" doc="The name of the externally launched nodelet manager."/>
   <arg name="ip" default="192.168.0.69" doc="The IP address of the VPU."/>
   <arg name="xmlrpc_port" default="80" doc="The TCP port the camera's xmlrpc server is listening on for requests."/>
   <arg name="pcic_port" default="50010" doc="The TCP (data) port the camera's pcic server is listening on for requests."/>
@@ -24,6 +25,7 @@
 
   <include ns="$(arg namespace)" file="$(find ifm3d_ros_driver)/launch/nodelet.launch">
     <arg name="camera" value="$(arg nodelet_name)"/>
+    <arg name="nodelet_manager" value="$(arg nodelet_manager)"/>
     <arg name="ip" value="$(arg ip)"/>
     <arg name="xmlrpc_port" value="$(arg xmlrpc_port)"/>
     <arg name="pcic_port" value="$(arg pcic_port)"/>

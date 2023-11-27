@@ -1,14 +1,32 @@
 <?xml version="1.0"?>
 <launch>
-  <node pkg="nodelet"
-        type="nodelet"
-        name="reg_standalone_nodelet"
-        args="manager"
-        output="screen"/>
-  <node pkg="nodelet"
-        type="nodelet"
-        name="registration"
-        args="load ifm3d_ros/registration_nodelet reg_standalone_nodelet"
-        output="screen"
-        respawn="true"/>
+  <arg name="depth_camera" default="camera"/>
+  <arg name="rgb_camera" default="camera"/>
+  <arg name="nodelet_manager" default="" doc="Name of the externally launched nodelet manager."/>
+  <arg name="namespace" default="ifm3d_ros_driver" doc="Desired namespace for the registration nodelet." />
+
+  <arg name="external_manager" value="$(eval arg('nodelet_manager') != '')"/>
+  <arg name="registration_nodelet_manager" if="$(arg external_manager)" value="$(arg nodelet_manager)"/>
+  <arg name="registration_nodelet_manager" unless="$(arg external_manager)" value="$(arg depth_camera)_registration_standalone_nodelet"/>
+
+  <group ns="$(arg namespace)">
+    <node unless="$(arg external_manager)"
+          pkg="nodelet"
+          type="nodelet"
+          name="$(arg registration_nodelet_manager)"
+          args="manager"
+          output="screen"/>
+
+    <node pkg="nodelet"
+          type="nodelet"
+          name="$(arg depth_camera)_color_registration"
+          args="load ifm3d_ros/registration_nodelet $(arg registration_nodelet_manager)"
+          output="screen"
+          respawn="true">
+      <param name="rgb_image_topic" value="/$(arg namespace)/$(arg rgb_camera)/rgb_image/compressed"/>"
+      <param name="rgb_info_topic" value="/$(arg namespace)/$(arg rgb_camera)/rgb_info"/>"
+      <param name="xyz_cloud_topic" value="/$(arg namespace)/$(arg depth_camera)/cloud"/>"
+      <param name="xyzrgb_cloud_topic" value="/$(arg namespace)/$(arg depth_camera)/colored_cloud"/>"
+    </node>
+  </group>
 </launch>
