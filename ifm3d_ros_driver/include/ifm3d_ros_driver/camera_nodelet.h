@@ -83,6 +83,7 @@ private:
   bool extrinsic_image_stream_;
   bool intrinsic_image_stream_;
   bool rgb_image_stream_;
+  bool rgb_info_stream_;
 
   std::list<ifm3d::buffer_id> buffer_list;
   ifm3d::FrameGrabber::BufferList schema_mask_default_3d_;
@@ -115,6 +116,7 @@ private:
   ros::Publisher uvec_pub_;
   ros::Publisher extrinsics_pub_;
   ros::Publisher intrinsics_pub_;
+  ros::Publisher rgb_info_pub_;
   image_transport::Publisher distance_pub_;
   image_transport::Publisher distance_noise_pub_;
   image_transport::Publisher amplitude_pub_;
@@ -141,7 +143,6 @@ private:
   //
   // Message header used for publishing
   //
-  std_msgs::Header optical_head;
   std_msgs::Header head;
 
 

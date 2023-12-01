@@ -14,8 +14,6 @@ catkin_python_setup()
 
 add_message_files(
   DIRECTORY msg
-  FILES
-  Extrinsics.msg
   )
 
 add_service_files(

@@ -8,3 +8,12 @@
     </description>
   </class>
 </library>
+<library path="lib/libregistration">
+  <class name="ifm3d_ros/registration_nodelet"
+         type="ifm3d_ros::RegistrationNodelet"
+         base_class_type="nodelet::Nodelet">
+    <description>
+      TODO
+    </description>
+  </class>
+</library>

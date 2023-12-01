@@ -11,15 +11,18 @@ find_package(ifm3d 1.2.6 REQUIRED COMPONENTS
              )
 
 find_package(catkin REQUIRED COMPONENTS
-             rospy
+             cv_bridge
+             ifm3d_ros_msgs
              image_transport
+             message_runtime
              nodelet
              roscpp
+             rospy
+             rostest
              sensor_msgs
              std_msgs
-             message_runtime
-             rostest
-             ifm3d_ros_msgs
+             tf2_geometry_msgs
+             tf2_ros
              )
 
 # catkin_python_setup()
@@ -31,7 +34,7 @@ option(CATKIN_ENABLE_TESTING "Build tests" OFF)
 ###################################
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES ifm3d_ros
+  LIBRARIES ifm3d_ros registration
   CATKIN_DEPENDS roscpp nodelet
   )
 
@@ -51,12 +54,18 @@ target_link_libraries(ifm3d_ros
   ifm3d::framegrabber
   )
 
+add_library(registration src/registration_nodelet.cpp)
+target_link_libraries(registration
+  ${catkin_LIBRARIES}
+  )
+
 #############
 ## Install ##
 #############
 
 install(TARGETS
   ifm3d_ros
+  registration
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -67,8 +76,18 @@ install(DIRECTORY
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   )
 
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+  )
+
 install(FILES nodelets.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  )
+
+catkin_install_python(PROGRAMS
+  scripts/example_registration_2d_3d.py
+  DESTINATION
+  ${CATKIN_PACKAGE_BIN_DESTINATION}
   )
 
 ######################

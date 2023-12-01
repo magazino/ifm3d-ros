@@ -4,6 +4,7 @@
  */
 
 #include <ifm3d/fg/frame.h>
+#include <ifm3d_ros_driver/buffer_conversions.hpp>
 #include <ifm3d_ros_driver/camera_nodelet.h>
 
 #include <cmath>
@@ -21,10 +22,6 @@
 #include <nodelet/nodelet.h>
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
-#include <sensor_msgs/CompressedImage.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/image_encodings.h>
 
 #include <ifm3d_ros_msgs/Config.h>
 #include <ifm3d_ros_msgs/Dump.h>
@@ -55,173 +52,6 @@ std::string formatTimestamp(ifm3d::TimePointT timestamp)
     << std::setw(3) << std::setfill('0') << milli.count();
 
   return s.str();
-}
-
-sensor_msgs::Image ifm3d_to_ros_image(ifm3d::Buffer& image,  // Need non-const image because image.begin(),
-                                                            // image.end() don't have const overloads.
-                                      const std_msgs::Header& header, const std::string& logger)
-{
-  static constexpr auto max_pixel_format = static_cast<std::size_t>(ifm3d::pixel_format::FORMAT_32F3);
-  static auto image_format_info = [] {
-    auto image_format_info = std::array<std::string, max_pixel_format + 1>{};
-
-    {
-      using namespace ifm3d;
-      using namespace sensor_msgs::image_encodings;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_8U)] = TYPE_8UC1;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_8S)] = TYPE_8SC1;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_16U)] = TYPE_16UC1;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_16S)] = TYPE_16SC1;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_32U)] = "32UC1";
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_32S)] = TYPE_32SC1;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_32F)] = TYPE_32FC1;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_64U)] = "64UC1";
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_64F)] = TYPE_64FC1;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_16U2)] = TYPE_16UC2;
-      image_format_info[static_cast<std::size_t>(pixel_format::FORMAT_32F3)] = TYPE_32FC3;
-    }
-
-    return image_format_info;
-  }();
-
-  const auto format = static_cast<std::size_t>(image.dataFormat());
-
-  sensor_msgs::Image result{};
-  result.header = header;
-  result.height = image.height();
-  result.width = image.width();
-  result.is_bigendian = 0;
-
-  if (image.begin<std::uint8_t>() == image.end<std::uint8_t>())
-  {
-    return result;
-  }
-
-  if (format >= max_pixel_format)
-  {
-    ROS_ERROR_NAMED(logger, "Pixel format out of range (%ld >= %ld)", format, max_pixel_format);
-    return result;
-  }
-
-  result.encoding = image_format_info.at(format);
-  result.step = result.width * sensor_msgs::image_encodings::bitDepth(image_format_info.at(format)) / 8;
-  result.data.insert(result.data.end(), image.ptr<>(0), std::next(image.ptr<>(0), result.step * result.height));
-
-  if (result.encoding.empty())
-  {
-    ROS_WARN_NAMED(logger, "Can't handle encoding %ld (32U == %ld, 64U == %ld)", format,
-                   static_cast<std::size_t>(ifm3d::pixel_format::FORMAT_32U),
-                   static_cast<std::size_t>(ifm3d::pixel_format::FORMAT_64U));
-    result.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
-  }
-
-  return result;
-}
-
-sensor_msgs::Image ifm3d_to_ros_image(ifm3d::Buffer&& image, const std_msgs::Header& header, const std::string& logger)
-{
-  return ifm3d_to_ros_image(image, header, logger);
-}
-
-sensor_msgs::CompressedImage ifm3d_to_ros_compressed_image(ifm3d::Buffer& image,  // Need non-const image because
-                                                                                 // image.begin(), image.end()
-                                                                                 // don't have const overloads.
-                                                           const std_msgs::Header& header,
-                                                           const std::string& format,  // "jpeg" or "png"
-                                                           const std::string& logger)
-{
-  sensor_msgs::CompressedImage result{};
-  result.header = header;
-  result.format = format;
-
-  {
-    const auto dataFormat = image.dataFormat();
-    if (dataFormat != ifm3d::pixel_format::FORMAT_8S && dataFormat != ifm3d::pixel_format::FORMAT_8U)
-    {
-      ROS_ERROR_NAMED(logger, "Invalid data format for %s data (%ld)", format.c_str(),
-                      static_cast<std::size_t>(dataFormat));
-      return result;
-    }
-  }
-
-  result.data.insert(result.data.end(), image.ptr<>(0), std::next(image.ptr<>(0), image.width() * image.height()));
-  return result;
-}
-
-sensor_msgs::CompressedImage ifm3d_to_ros_compressed_image(ifm3d::Buffer&& image, const std_msgs::Header& header,
-                                                           const std::string& format, const std::string& logger)
-{
-  return ifm3d_to_ros_compressed_image(image, header, format, logger);
-}
-
-sensor_msgs::PointCloud2 ifm3d_to_ros_cloud(ifm3d::Buffer& image,  // Need non-const image because image.begin(),
-                                                                  // image.end() don't have const overloads.
-                                            const std_msgs::Header& header, const std::string& logger)
-{
-  // Accessing the header content
-  uint32_t header_seq = header.seq;
-  ros::Time header_stamp = header.stamp;
-  std::string header_frame_id = header.frame_id;
-
-  // Logging header content to DEBUG level using ROS_DEBUG
-  ROS_DEBUG("Header Sequence: %d", header_seq);
-  ROS_DEBUG("Header Stamp: %d.%d", header_stamp.sec, header_stamp.nsec);
-  ROS_DEBUG("Header Frame ID: %s", header_frame_id.c_str());
-
-  sensor_msgs::PointCloud2 result{};
-  result.header = header;
-  result.height = image.height();
-  result.width = image.width();
-  result.is_bigendian = false;
-
-  if (image.begin<std::uint8_t>() == image.end<std::uint8_t>())
-  {
-    return result;
-  }
-
-  if (image.dataFormat() != ifm3d::pixel_format::FORMAT_32F3 && image.dataFormat() != ifm3d::pixel_format::FORMAT_32F)
-  {
-    ROS_ERROR_NAMED(logger, "Unsupported pixel format %ld for point cloud",
-                    static_cast<std::size_t>(image.dataFormat()));
-    return result;
-  }
-
-  sensor_msgs::PointField x_field{};
-  x_field.name = "x";
-  x_field.offset = 0;
-  x_field.datatype = sensor_msgs::PointField::FLOAT32;
-  x_field.count = 1;
-
-  sensor_msgs::PointField y_field{};
-  y_field.name = "y";
-  y_field.offset = 4;
-  y_field.datatype = sensor_msgs::PointField::FLOAT32;
-  y_field.count = 1;
-
-  sensor_msgs::PointField z_field{};
-  z_field.name = "z";
-  z_field.offset = 8;
-  z_field.datatype = sensor_msgs::PointField::FLOAT32;
-  z_field.count = 1;
-
-  result.fields = {
-    x_field,
-    y_field,
-    z_field,
-  };
-
-  result.point_step = result.fields.size() * sizeof(float);
-  result.row_step = result.point_step * result.width;
-  result.is_dense = true;
-  result.data.insert(result.data.end(), image.ptr<>(0), std::next(image.ptr<>(0), result.row_step * result.height));
-
-  return result;
-}
-
-sensor_msgs::PointCloud2 ifm3d_to_ros_cloud(ifm3d::Buffer&& image, const std_msgs::Header& header,
-                                            const std::string& logger)
-{
-  return ifm3d_to_ros_cloud(image, header, logger);
 }
 
 using json = ifm3d::json;
@@ -256,6 +86,7 @@ void ifm3d_ros::CameraNodelet::onInit()
   bool extrinsic_image_stream;
   bool intrinsic_image_stream;
   bool rgb_image_stream;
+  bool rgb_info_stream;
 
   if ((nn.size() > 0) && (nn.at(0) == '/'))
   {
@@ -289,6 +120,7 @@ void ifm3d_ros::CameraNodelet::onInit()
   this->np_.param("extrinsic_image_stream", extrinsic_image_stream, true);
   this->np_.param("intrinsic_image_stream", intrinsic_image_stream, true);
   this->np_.param("rgb_image_stream", rgb_image_stream, true);
+  this->np_.param("rgb_info_stream", rgb_info_stream, true);
 
   // default schema masks
   std::list<ifm3d::buffer_id> buffer_list;
@@ -315,6 +147,7 @@ void ifm3d_ros::CameraNodelet::onInit()
   this->radial_distance_noise_stream_ = static_cast<bool>(radial_distance_noise_stream);
   this->amplitude_image_stream_ = static_cast<bool>(amplitude_image_stream);
   this->rgb_image_stream_ = static_cast<bool>(rgb_image_stream);
+  this->rgb_info_stream_ = static_cast<bool>(rgb_info_stream);
   this->extrinsic_image_stream_ = static_cast<bool>(extrinsic_image_stream);
   this->intrinsic_image_stream_ = static_cast<bool>(intrinsic_image_stream);
 
@@ -385,10 +218,18 @@ void ifm3d_ros::CameraNodelet::onInit()
     NODELET_DEBUG_STREAM("Extrinsics parameter publisher active");
   }
 
-  // if (this->intrinsic_image_stream)
-  // {
-  //   this->intrinsics_pub_ = this->np_.advertise<ifm3d_ros_msgs::Intrinsics>("intrinsics", 1);
-  // }
+  if (this->intrinsic_image_stream_)
+  {
+    this->intrinsics_pub_ = this->np_.advertise<ifm3d_ros_msgs::Intrinsics>("intrinsics", 1);
+    NODELET_DEBUG_STREAM("Intrinsics parameter publisher active");
+  }
+
+  if (strcmp(this->imager_type_.c_str(), "2D") == 0 && this->rgb_info_stream_)
+  {
+    this->rgb_info_pub_ = this->np_.advertise<ifm3d_ros_msgs::RGBInfo>("rgb_info", 1);
+    NODELET_DEBUG_STREAM("RGB info publisher active");
+  }
+
   NODELET_DEBUG_STREAM("after advertising the publishers");
 
 
@@ -712,10 +553,30 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
 
     if (this->rgb_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::JPEG_IMAGE))
     {
-      this->rgb_image_pub_.publish(ifm3d_to_ros_compressed_image(rgb_img, optical_head, "jpeg", getName()));
+      this->rgb_image_pub_.publish(ifm3d_to_ros_compressed_image(rgb_img, head, "jpeg", getName()));
       NODELET_DEBUG_STREAM("after publishing rgb image");
     }
 
+    if (this->extrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB);
+      this->extrinsics_pub_.publish(ifm3d_to_extrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing rgb extrinsics");
+    }
+
+    if (this->intrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
+      this->intrinsics_pub_.publish(ifm3d_to_intrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing rgb intrinsics");
+    }
+
+    if (this->rgb_info_stream_ && frame->HasBuffer(ifm3d::buffer_id::RGB_INFO))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::RGB_INFO);
+      this->rgb_info_pub_.publish(ifm3d_to_rgb_info(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing rgb info");
+    }
 }
 
 void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
@@ -777,25 +638,25 @@ void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
 
     if (this->amplitude_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::NORM_AMPLITUDE_IMAGE))
     {
-      this->amplitude_pub_.publish(ifm3d_to_ros_image(amplitude_img, optical_head, getName()));
+      this->amplitude_pub_.publish(ifm3d_to_ros_image(amplitude_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing norm amplitude image");
     }
 
     if (this->confidence_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::CONFIDENCE_IMAGE))
     {
-      this->conf_pub_.publish(ifm3d_to_ros_image(confidence_img, optical_head, getName()));
+      this->conf_pub_.publish(ifm3d_to_ros_image(confidence_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing confidence image");
     }
 
     if (this->radial_distance_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::RADIAL_DISTANCE_IMAGE))
     {
-      this->distance_pub_.publish(ifm3d_to_ros_image(distance_img, optical_head, getName()));
+      this->distance_pub_.publish(ifm3d_to_ros_image(distance_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing distance image");
     }
 
     if (this->radial_distance_noise_stream_ && frame->HasBuffer(ifm3d::buffer_id::RADIAL_DISTANCE_NOISE))
     {
-      this->distance_noise_pub_.publish(ifm3d_to_ros_image(distance_noise_img, optical_head, getName()));
+      this->distance_noise_pub_.publish(ifm3d_to_ros_image(distance_noise_img, head, getName()));
       NODELET_DEBUG_STREAM("after publishing distance noise image");
     }
 
@@ -811,24 +672,16 @@ void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
     //
     if (this->extrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB))
     {
-      NODELET_DEBUG_STREAM("start publishing extrinsics");
-      ifm3d_ros_msgs::Extrinsics extrinsics_msg;
-      extrinsics_msg.header = optical_head;
-      try
-      {
-        ifm3d::Buffer_<float> ext = extrinsics;
-        extrinsics_msg.tx = ext.at(0);
-        extrinsics_msg.ty = ext.at(1);
-        extrinsics_msg.tz = ext.at(2);
-        extrinsics_msg.rot_x = ext.at(3);
-        extrinsics_msg.rot_y = ext.at(4);
-        extrinsics_msg.rot_z = ext.at(5);
-      }
-      catch (const std::out_of_range& ex)
-      {
-        NODELET_WARN("out-of-range error fetching extrinsics");
-      }
-      this->extrinsics_pub_.publish(extrinsics_msg);
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::EXTRINSIC_CALIB);
+      this->extrinsics_pub_.publish(ifm3d_to_extrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing depth extrinsics");
+    }
+
+    if (this->intrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
+    {
+      auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
+      this->intrinsics_pub_.publish(ifm3d_to_intrinsics(buffer, head, getName()));
+      NODELET_DEBUG_STREAM("after publishing depth intrinsics");
     }
 }
 

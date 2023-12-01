@@ -3,6 +3,7 @@
   <!-- Command-line arguments -->
   <arg name="namespace" default="ifm3d_ros_driver" doc="Desired namespace for the camera nodelet" />
   <arg name="nodelet_name" default="camera"/>
+  <arg name="nodelet_manager" default="" doc="The name of the externally launched nodelet manager."/>
   <arg name="ip" default="192.168.0.69" doc="The IP address of the VPU."/>
   <arg name="xmlrpc_port" default="80" doc="The TCP port the camera's xmlrpc server is listening on for requests."/>
   <arg name="pcic_port" default="50010" doc="The TCP (data) port the camera's pcic server is listening on for requests."/>
@@ -20,9 +21,11 @@
   <arg name="extrinsic_image_stream" default="false" doc="Enable extrinsic values streaming for 3D camera camera streams." />
   <arg name="intrinsic_image_stream" default="false" doc="Enable intrinsic values streaming for 3D camera camera streams." />
   <arg name="rgb_image_stream" default="true" doc="Enable rgb image streaming for 3D camera camera streams." />
+  <arg name="rgb_info_stream" default="true" doc="Enable rgb info streaming for 3D camera camera streams." />
 
   <include ns="$(arg namespace)" file="$(find ifm3d_ros_driver)/launch/nodelet.launch">
     <arg name="camera" value="$(arg nodelet_name)"/>
+    <arg name="nodelet_manager" value="$(arg nodelet_manager)"/>
     <arg name="ip" value="$(arg ip)"/>
     <arg name="xmlrpc_port" value="$(arg xmlrpc_port)"/>
     <arg name="pcic_port" value="$(arg pcic_port)"/>
@@ -41,6 +44,7 @@
     <arg name="extrinsic_image_stream" value="$(arg extrinsic_image_stream)"/>"
     <arg name="intrinsic_image_stream" value="$(arg intrinsic_image_stream)"/>"
     <arg name="rgb_image_stream" value="$(arg rgb_image_stream)"/>"
+    <arg name="rgb_info_stream" value="$(arg rgb_info_stream)"/>"
   </include>
 
 </launch>

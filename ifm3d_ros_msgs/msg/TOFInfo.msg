@@ -1,0 +1,19 @@
+std_msgs/Header header
+
+uint32 measurement_block_index
+float32 measurement_range_min
+float32 measurement_range_max
+uint32 version
+float32 distance_resolution
+float32 amplitude_resolution
+float32[] amp_normalization_factors
+
+ifm3d_ros_msgs/Extrinsics extrinsics
+ifm3d_ros_msgs/Intrinsics intrinsics
+ifm3d_ros_msgs/InverseIntrinsics inverse_intrinsics
+
+uint64[] exposure_timestamps_ns
+uint32[] exposure_times_s
+float32 illu_temperature
+string mode
+string imager

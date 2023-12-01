@@ -6,6 +6,7 @@
   <arg name="ip" default="192.168.0.69" doc="The IP address of the VPU."/>
   <arg name="xmlrpc_port" default="80" doc="The TCP port the camera's xmlrpc server is listening on for requests."/>
   <arg name="pcic_port" default="50010" doc="The TCP (data) port the camera's pcic server is listening on for requests."/>
+  <arg name="nodelet_manager" default="" doc="The name of the externally launched nodelet manager."/>
   <arg name="password" default="" doc="The password required to establish an edit session on the VPU"/>
   <arg name="imager_type" default="3D" doc="The imager type of the requested camera head"/>
   <arg name="timeout_millis" default="500" doc="The number of milliseconds to wait for the framegrabber to return new frame data before declaring a &quot;timeout&quot; and to stop blocking on new data."/>
@@ -21,17 +22,23 @@
   <arg name="extrinsic_image_stream" default="true" doc="Enable extrinsic values streaming for 3D camera camera streams." />
   <arg name="intrinsic_image_stream" default="false" doc="Enable intrinsic values streaming for 3D camera camera streams." />
   <arg name="rgb_image_stream" default="false" doc="Enable rgb image streaming for 3D camera camera streams." />
+  <arg name="rgb_info_stream" default="false" doc="Enable rgb info streaming for 3D camera camera streams." />
 
-  <node pkg="nodelet"
+  <arg name="external_manager" value="$(eval arg('nodelet_manager') != '')"/>
+  <arg name="camera_nodelet_manager" if="$(arg external_manager)" value="$(arg nodelet_manager)"/>
+  <arg name="camera_nodelet_manager" unless="$(arg external_manager)" value="$(arg camera)_standalone_nodelet"/>
+
+  <node unless="$(arg external_manager)"
+        pkg="nodelet"
         type="nodelet"
-        name="$(arg camera)_standalone_nodelet"
+        name="$(arg camera_nodelet_manager)"
         args="manager"
         output="screen"/>
 
   <node pkg="nodelet"
         type="nodelet"
         name="$(arg camera)"
-        args="load ifm3d_ros/camera_nodelet $(arg camera)_standalone_nodelet"
+        args="load ifm3d_ros/camera_nodelet $(arg camera_nodelet_manager)"
         output="screen"
         respawn="$(arg respawn)">
 
@@ -138,6 +145,11 @@
       #
       rgb_image_stream: $(arg rgb_image_stream)
 
+      #
+      # Streaming of the 2D RGB info via ros node
+      #
+      rgb_info_stream: $(arg rgb_info_stream)
+
 
 
       #
@@ -164,6 +176,7 @@
     <param name="extrinsic_image_stream" value="$(arg extrinsic_image_stream)"/>"
     <param name="intrinsic_image_stream" value="$(arg intrinsic_image_stream)"/>"
     <param name="rgb_image_stream" value="$(arg rgb_image_stream)"/>"
+    <param name="rgb_info_stream" value="$(arg rgb_info_stream)"/>"
 
   </node>
 
