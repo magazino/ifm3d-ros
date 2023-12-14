@@ -117,6 +117,7 @@ private:
   ros::Publisher extrinsics_pub_;
   ros::Publisher intrinsics_pub_;
   ros::Publisher rgb_info_pub_;
+  ros::Publisher rgb_camera_info_pub_;
   image_transport::Publisher distance_pub_;
   image_transport::Publisher distance_noise_pub_;
   image_transport::Publisher amplitude_pub_;
