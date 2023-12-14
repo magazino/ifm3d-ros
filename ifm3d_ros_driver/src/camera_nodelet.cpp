@@ -227,7 +227,7 @@ void ifm3d_ros::CameraNodelet::onInit()
   if (strcmp(this->imager_type_.c_str(), "2D") == 0 && this->rgb_info_stream_)
   {
     this->rgb_info_pub_ = this->np_.advertise<ifm3d_ros_msgs::RGBInfo>("rgb_info", 1);
-    this->rgb_camera_info_pub = this->np_.advertise<sensor_msgs::CameraInfo>("rgb_camera_info", 1);
+    this->rgb_camera_info_pub_ = this->np_.advertise<sensor_msgs::CameraInfo>("rgb_camera_info", 1);
     NODELET_DEBUG_STREAM("RGB info publisher active");
   }
 
@@ -582,7 +582,7 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
     if (this->rgb_info_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
     {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
-      this->rgb_info_pub_.publish(ifm3d_to_camera_info(buffer, head, getName()));
+      this->rgb_info_pub_.publish(ifm3d_to_camera_info(buffer, head, rgb_img.height(), rgb_img.width(), getName()));
       NODELET_DEBUG_STREAM("after publishing camera info");
     }
 }
