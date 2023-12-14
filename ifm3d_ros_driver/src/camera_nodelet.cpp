@@ -582,7 +582,7 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
     if (this->rgb_info_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
     {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
-      this->rgb_info_pub_.publish(ifm3d_to_camera_info(buffer, head, rgb_img.height(), rgb_img.width(), getName()));
+      this->rgb_camera_info_pub_.publish(ifm3d_to_camera_info(buffer, head, rgb_img.height(), rgb_img.width(), getName()));
       NODELET_DEBUG_STREAM("after publishing camera info");
     }
 }
