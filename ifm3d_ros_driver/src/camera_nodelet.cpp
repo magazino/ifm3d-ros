@@ -118,7 +118,9 @@ void ifm3d_ros::CameraNodelet::onInit()
   this->np_.param("radial_distance_noise_stream", radial_distance_noise_stream, true);
   this->np_.param("amplitude_image_stream", amplitude_image_stream, true);
   this->np_.param("extrinsic_image_stream", extrinsic_image_stream, true);
-  this->np_.param("intrinsic_image_stream", intrinsic_image_stream, true);
+//  this->np_.param("intrinsic_image_stream", intrinsic_image_stream, true);
+// TODO
+  intrinsic_image_stream = true;
   this->np_.param("rgb_image_stream", rgb_image_stream, true);
   this->np_.param("rgb_info_stream", rgb_info_stream, true);
 
@@ -146,10 +148,11 @@ void ifm3d_ros::CameraNodelet::onInit()
   this->radial_distance_image_stream_ = static_cast<bool>(radial_distance_image_stream);
   this->radial_distance_noise_stream_ = static_cast<bool>(radial_distance_noise_stream);
   this->amplitude_image_stream_ = static_cast<bool>(amplitude_image_stream);
-  this->rgb_image_stream_ = static_cast<bool>(rgb_image_stream);
-  this->rgb_info_stream_ = static_cast<bool>(rgb_info_stream);
-  this->extrinsic_image_stream_ = static_cast<bool>(extrinsic_image_stream);
-  this->intrinsic_image_stream_ = static_cast<bool>(intrinsic_image_stream);
+  // fuck it
+  this->rgb_image_stream_ = true;
+  this->rgb_info_stream_ = true;
+  this->extrinsic_image_stream_ = true;
+  this->intrinsic_image_stream_ = true;
 
   this->xmlrpc_port_ = static_cast<std::uint16_t>(xmlrpc_port);
   this->pcic_port_ = static_cast<std::uint16_t>(pcic_port);
@@ -546,7 +549,7 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
       );
     if ((ros::Time::now() - this->head.stamp) > ros::Duration(this->frame_latency_thresh_))
     {
-      NODELET_INFO_STREAM("Camera's time and client's time are not synced");
+//      NODELET_INFO_STREAM("Camera's time and client's time are not synced");
       this->head.stamp = ros::Time::now();
     }
     // Header frame_id
@@ -579,11 +582,18 @@ void ifm3d_ros::CameraNodelet::Callback2D(ifm3d::Frame::Ptr frame){
       NODELET_DEBUG_STREAM("after publishing rgb info");
     }
 
-    if (this->rgb_info_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
+    if (this->intrinsic_image_stream_ && frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB))
     {
       auto buffer = frame->GetBuffer(ifm3d::buffer_id::INTRINSIC_CALIB);
       this->rgb_camera_info_pub_.publish(ifm3d_to_camera_info(buffer, head, rgb_img.height(), rgb_img.width(), getName()));
       NODELET_DEBUG_STREAM("after publishing camera info");
+    }
+
+    if (!this->intrinsic_image_stream_) {
+  //    NODELET_WARN("intrinsic image stream is false");
+    }
+    if (!frame->HasBuffer(ifm3d::buffer_id::INTRINSIC_CALIB)) {
+  //    NODELET_WARN("frame has no intrinsics buffer");
     }
 }
 
@@ -638,7 +648,7 @@ void ifm3d_ros::CameraNodelet::Callback3D(ifm3d::Frame::Ptr frame){
       );
     if ((ros::Time::now() - this->head.stamp) > ros::Duration(this->frame_latency_thresh_))
     {
-      NODELET_INFO_ONCE("Camera's time and client's time are not synced");
+//      NODELET_INFO_ONCE("Camera's time and client's time are not synced");
       this->head.stamp = ros::Time::now();
     }
     // Header frame_id
