@@ -44,57 +44,57 @@
 
     <!-- You can add topic remappings here, e.g.: -->
 
-    <rosparam subst_value="true">
+    <!-- <rosparam subst_value="true"> -->
       #
       # The IP address of the camera to connect to
       #
-      ip: "$(arg ip)"
+      <param name="ip" value="$(arg ip)"/>
 
       #
       # The on-camera TCP port that the XMLRPC server is listening to
       #
-      xmlrpc_port: "$(arg xmlrpc_port)"
+      <param name="xmlrpc_port" value="$(arg xmlrpc_port)"/>
 
       #
       # The on-camera TCP port that the PCIC server is listening to
       #
-      pcic_port: $(arg pcic_port)
+      <param name="pcic_port"  value="$(arg pcic_port)"/>
 
       #
       # The password needed to establish an edit session with the camera
-      #
-      password: "$(arg password)"
+     #
+      <param name="password" value="$(arg password)"/>
 
       #
       # The imager type of the requested camera head
       #
-      imager_type: "$(arg imager_type)"
+      <param name="imager_type" value="$(arg imager_type)"/>
 
       #
       # The number of milliseconds to wait for a frame before declaring a
       # framegrabber timeout
       #
-      timeout_millis: $(arg timeout_millis)
+      <param name="timeout_millis" value="$(arg timeout_millis)"/>
 
       #
       # The number of seconds to endure timeouts before restarting the framegrabber
       #
-      timeout_tolerance_secs: $(arg timeout_tolerance_secs)
+      <param name="timeout_tolerance_secs" value="$(arg timeout_tolerance_secs)"/>
 
       #
       # Flag indicating whether or not the nodelet should assume the camera is
       # being software triggered
       #
-      assume_sw_triggered: $(arg assume_sw_triggered)
+      <param name="assume_sw_triggered" value="$(arg assume_sw_triggered)"/>
 
       #
       # If using the `SoftOff`/`SoftOn` functionality, these parameters
       # control the `timeout_millis` and `timeout_tolerance_secs`
       #
-      soft_on_timeout_millis: $(arg timeout_millis)
-      soft_on_timeout_tolerance_secs: $(arg timeout_tolerance_secs)
-      soft_off_timeout_millis: 500
-      soft_off_timeout_tolerance_secs: 600.0
+      <param name="soft_on_timeout_millis" value="$(arg timeout_millis)"/>
+      <param name="soft_on_timeout_tolerance_secs" value="$(arg timeout_tolerance_secs)"/>
+      <param name="soft_off_timeout_millis" value="500"/>
+      <param name="soft_off_timeout_tolerance_secs" value="600.0"/>
 
       #
       # Time (seconds) used to determine that timestamps from the camera
@@ -102,64 +102,53 @@
       # system time, we use the reception time of the frame and not the capture
       # time of the frame.
       #
-      frame_latency_thresh: 60.0
+      <param name="frame_latency_thresh" value="60.0"/>
 
 
       #
       # Streaming of the XYZ point cloud image via the ros node
       #
-      xyz_image_stream: $(arg xyz_image_stream)
+      <param name="xyz_image_stream" value="$(arg xyz_image_stream)"/>
 
       #
       # Streaming of the confidence image via ros node
       #
-      confidence_image_stream: $(arg confidence_image_stream)
-
-      #
-      # Streaming of the radial distance image via ros node
-      #
-      radial_distance_image_stream: $(arg radial_distance_image_stream)
-
-      #
-      # Streaming of the distance noise image via ros node
-      #
-      radial_distance_noise_stream: $(arg radial_distance_noise_stream)
+      <param name="confidence_image_stream" value="$(arg confidence_image_stream)"/>
+      <param name="radial_distance_noise_stream" value="$(arg radial_distance_noise_stream)"/>
 
       #
       # Streaming of the amplitude image via ros node
       #
-      amplitude_image_stream: $(arg amplitude_image_stream)
+      <param name="amplitude_image_stream" value="$(arg amplitude_image_stream)"/>
 
       #
       # Streaming of the extrinsics parameters via ros node
       #
-      extrinsic_image_stream: $(arg extrinsic_image_stream)
+      <param name="extrinsic_image_stream" value="$(arg extrinsic_image_stream)"/>
 
       #
       # Streaming of the intrinsics parameters via ros node
       #
-      intrinsic_image_stream: $(arg intrinsic_image_stream)
+      <param name="intrinsic_image_stream" value="$(arg intrinsic_image_stream)"/>
 
       #
       # Streaming of the 2D RGB image via ros node
       #
-      rgb_image_stream: $(arg rgb_image_stream)
+      <param name="rgb_image_stream" value="$(arg rgb_image_stream)"/>
 
       #
       # Streaming of the 2D RGB info via ros node
       #
-      rgb_info_stream: $(arg rgb_info_stream)
-
-
-
+      <param name="rgb_info_stream" value="$(arg rgb_info_stream)"/>
+            <!--
       #
       # Get rid of the errors when running `rosbag -a'
       #
       distance/disable_pub_plugins: ['image_transport/compressedDepth', 'image_transport/theora']
       amplitude/disable_pub_plugins: ['image_transport/compressedDepth', 'image_transport/theora']
       confidence/disable_pub_plugins: ['image_transport/compressedDepth', 'image_transport/theora']
-      xyz_image/disable_pub_plugins: ['image_transport/compressedDepth', 'image_transport/theora']
-    </rosparam>
+      xyz_image/disable_pub_plugins: ['image_transport/compressedDepth', 'image_transport/theora'] -->
+    <!-- </rosparam> -->
 
     <param name="frame_id_base" value="$(arg frame_id_base)"/>
 
@@ -188,3 +177,4 @@
         respawn="$(arg respawn)" />
 
 </launch>
+ 
